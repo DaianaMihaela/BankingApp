@@ -61,7 +61,11 @@ class MainActivity : ComponentActivity() {
                         "MAIN" -> HomeScreen(
                             viewModel = viewModel,
                             userName = savedName,
-                            onReset = {
+                            onLogout = {
+
+                                currentScreen = "LOGIN"
+                            },
+                            onDeleteAccount = {
                                 sharedPref.edit().clear().apply()
                                 savedName = ""
                                 savedPin = ""

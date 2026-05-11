@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.bankingapp.viewmodel.BankingViewModel
 import com.example.bankingapp.data.model.Transaction
 
+// Culori
 val PrimaryColor = Color(0xFF6366F1)
 val SecondaryColor = Color(0xFF4F46E5)
 val BackgroundColor = Color(0xFFF1F5F9)
@@ -78,11 +79,11 @@ fun LoginScreen(savedPin: String, userName: String, onLoginSuccess: () -> Unit, 
                     else if (it.length == 4) isError = true
                 }
             },
-            label = { Text(text = "PIN") },
+            label = { Text(text = "PIN Acces") },
             visualTransformation = PasswordVisualTransformation(),
             isError = isError
         )
-        if (isError) Text(text = "Incorect", color = Color.Red)
+        if (isError) Text(text = "PIN Incorect", color = Color.Red)
         Spacer(Modifier.height(40.dp))
         TextButton(onClick = onGoToRegister) {
             Text(text = "Creează cont nou", color = PrimaryColor)
@@ -91,7 +92,7 @@ fun LoginScreen(savedPin: String, userName: String, onLoginSuccess: () -> Unit, 
 }
 
 @Composable
-fun HomeScreen(viewModel: BankingViewModel, userName: String, onReset: () -> Unit) {
+fun HomeScreen(viewModel: BankingViewModel, userName: String, onLogout: () -> Unit, onDeleteAccount: () -> Unit) {
     var showPayDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -120,8 +121,15 @@ fun HomeScreen(viewModel: BankingViewModel, userName: String, onReset: () -> Uni
                     }
                 }
 
-                IconButton(onClick = onReset) {
-                    Icon(Icons.Default.ExitToApp, contentDescription = "Reset", tint = Color.Red)
+                Row {
+                    // Butonul de Logout (Te trimite la Login)
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = PrimaryColor)
+                    }
+                    // Butonul de Delete Account (Te trimite la Register)
+                    IconButton(onClick = onDeleteAccount) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = "Delete", tint = Color.Red)
+                    }
                 }
             }
 
