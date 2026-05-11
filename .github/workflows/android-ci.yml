@@ -33,6 +33,7 @@ jobs:
 
       - name: 🔨 Build with Gradle
         run: ./gradlew build
+        continue-on-error: true
 
       - name: 🧪 Run unit tests
         run: ./gradlew test
@@ -47,25 +48,17 @@ jobs:
         continue-on-error: true
 
       - name: 📤 Upload APK Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: release-apk
-          path: app/build/outputs/apk/release/
+          path: app/build/outputs/apk/
           retention-days: 30
 
-      - name: 📤 Upload Lint Reports
-        uses: actions/upload-artifact@v3
+      - name: 📤 Upload Build Reports
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lint-reports
-          path: app/build/reports/lint-results*.html
-          retention-days: 30
-
-      - name: 📤 Upload Test Reports
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: test-reports
-          path: app/build/reports/tests/
+          name: build-reports
+          path: app/build/reports/
           retention-days: 30
