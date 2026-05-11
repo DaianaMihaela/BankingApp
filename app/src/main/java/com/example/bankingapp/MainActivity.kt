@@ -1,5 +1,6 @@
 package com.example.bankingapp
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,28 +21,43 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sharedPref = getSharedPreferences("BankingPrefs", Context.MODE_PRIVATE)
+
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.White
-                ) {
-                    var currentScreen by remember { mutableStateOf("LOGIN") }
-                    var savedPin by remember { mutableStateOf("1234") }
-                    var savedName by remember { mutableStateOf("Utilizator") }
+                Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+
+                    var savedName by remember {
+                        mutableStateOf(sharedPref.getString("user_name", "") ?: "")
+                    }
+                    var savedPin by remember {
+                        mutableStateOf(sharedPref.getString("user_pin", "") ?: "")
+                    }
+
+                    var currentScreen by remember {
+                        mutableStateOf(if (savedName.isEmpty()) "REGISTER" else "LOGIN")
+                    }
 
                     when (currentScreen) {
                         "REGISTER" -> RegisterScreen { name, pin ->
+                            sharedPref.edit().apply {
+                                putString("user_name", name)
+                                putString("user_pin", pin)
+                                apply() // Scrie datele pe disc
+                            }
                             savedName = name
                             savedPin = pin
                             currentScreen = "LOGIN"
                         }
+
                         "LOGIN" -> LoginScreen(
                             savedPin = savedPin,
                             userName = savedName,
                             onLoginSuccess = { currentScreen = "MAIN" },
                             onGoToRegister = { currentScreen = "REGISTER" }
                         )
+
                         "MAIN" -> HomeScreen(viewModel, savedName)
                     }
                 }
