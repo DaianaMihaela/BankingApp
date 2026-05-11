@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import com.example.bankingapp.viewmodel.BankingViewModel
 import com.example.bankingapp.data.model.Transaction
 
-// Culori
 val PrimaryColor = Color(0xFF6366F1)
 val SecondaryColor = Color(0xFF4F46E5)
 val BackgroundColor = Color(0xFFF1F5F9)
@@ -92,7 +91,7 @@ fun LoginScreen(savedPin: String, userName: String, onLoginSuccess: () -> Unit, 
 }
 
 @Composable
-fun HomeScreen(viewModel: BankingViewModel, userName: String) {
+fun HomeScreen(viewModel: BankingViewModel, userName: String, onReset: () -> Unit) {
     var showPayDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -104,14 +103,26 @@ fun HomeScreen(viewModel: BankingViewModel, userName: String) {
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().background(BackgroundColor).padding(padding).padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(50.dp).clip(CircleShape).background(PrimaryColor), contentAlignment = Alignment.Center) {
-                    // REPARAT LINIA 91: Concatenare cu String gol pentru a forța tipul String
-                    val litera = "" + (if (userName.isNotEmpty()) userName[0] else "?")
-                    Text(text = litera, color = Color.White, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(50.dp).clip(CircleShape).background(PrimaryColor), contentAlignment = Alignment.Center) {
+                        val litera = "" + (if (userName.isNotEmpty()) userName[0] else "?")
+                        Text(text = litera, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(text = "Bun venit,", fontSize = 14.sp, color = Color.Gray)
+                        Text(text = userName.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(text = userName.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                IconButton(onClick = onReset) {
+                    Icon(Icons.Default.ExitToApp, contentDescription = "Reset", tint = Color.Red)
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -120,7 +131,6 @@ fun HomeScreen(viewModel: BankingViewModel, userName: String) {
                 Box(Modifier.fillMaxSize().background(PrimaryColor).padding(24.dp)) {
                     Column {
                         Text(text = "Sold disponibil", color = Color.White.copy(alpha = 0.7f))
-                        // REPARAT LINIA 106: Conversie forțată prin String.format sau concatenare
                         val valoareSold = "" + viewModel.balance.value + " RON"
                         Text(text = valoareSold, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
                     }

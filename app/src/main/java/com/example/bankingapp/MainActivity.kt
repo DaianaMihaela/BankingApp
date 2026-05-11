@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                             sharedPref.edit().apply {
                                 putString("user_name", name)
                                 putString("user_pin", pin)
-                                apply() // Scrie datele pe disc
+                                apply()
                             }
                             savedName = name
                             savedPin = pin
@@ -58,7 +58,16 @@ class MainActivity : ComponentActivity() {
                             onGoToRegister = { currentScreen = "REGISTER" }
                         )
 
-                        "MAIN" -> HomeScreen(viewModel, savedName)
+                        "MAIN" -> HomeScreen(
+                            viewModel = viewModel,
+                            userName = savedName,
+                            onReset = {
+                                sharedPref.edit().clear().apply()
+                                savedName = ""
+                                savedPin = ""
+                                currentScreen = "REGISTER"
+                            }
+                        )
                     }
                 }
             }
