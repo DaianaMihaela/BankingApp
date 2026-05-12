@@ -4,14 +4,24 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.bankingapp.data.model.User
 import com.example.bankingapp.data.model.SavingsAccount
 import com.example.bankingapp.ui.*
@@ -67,34 +77,37 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        // BARA DE JOS CU BUTOANELE PERMANENTE
-                        BottomAppBar(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentPadding = PaddingValues(horizontal = 16.dp)
+                        // BARA DE JOS CU BUTOANELE PROFESIONALE
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .shadow(8.dp, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Buton INAPOI
-                                Button(
+                                // Buton INAPOI profesional
+                                ProfiNavButton(
+                                    text = "Înapoi",
+                                    icon = Icons.Default.ArrowBack,
                                     onClick = { goBack() },
-                                    enabled = backStack.isNotEmpty() // Se dezactivează dacă nu avem unde să mergem înapoi
-                                ) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Înapoi")
-                                }
+                                    enabled = backStack.isNotEmpty()
+                                )
 
-                                // Buton INAINTE
-                                Button(
+                                // Buton INAINTE profesional
+                                ProfiNavButton(
+                                    text = "Înainte",
+                                    icon = Icons.Default.ArrowForward,
                                     onClick = { goForward() },
-                                    enabled = forwardStack.isNotEmpty() // Se activează doar dacă am dat "Înapoi" anterior
-                                ) {
-                                    Text("Înainte")
-                                    Spacer(Modifier.width(8.dp))
-                                    Icon(Icons.Default.ArrowForward, contentDescription = null)
-                                }
+                                    enabled = forwardStack.isNotEmpty()
+                                )
                             }
                         }
                     }
@@ -157,5 +170,44 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+// O funcție @Composable reutilizabilă pentru butoanele de navigare profesionale
+@Composable
+fun ProfiNavButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
+    val backgroundColor = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val contentColor = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
+    Row(
+        modifier = Modifier
+            .width(130.dp)
+            .height(50.dp)
+            .shadow(if (enabled) 4.dp else 0.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(backgroundColor)
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = contentColor,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
