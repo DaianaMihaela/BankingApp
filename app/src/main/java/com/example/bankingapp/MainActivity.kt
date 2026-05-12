@@ -2,77 +2,62 @@ package com.example.bankingapp
 
 import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import com.example.bankingapp.ui.HomeScreen
-import com.example.bankingapp.ui.LoginScreen
-import com.example.bankingapp.ui.RegisterScreen
-import com.example.bankingapp.viewmodel.BankingViewModel
+import com.example.bankingapp.data.model.User
+import com.example.bankingapp.ui.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: BankingViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val sharedPref = getSharedPreferences("BankingPrefs", Context.MODE_PRIVATE)
+        val sharedPref = getSharedPreferences("BankingData", Context.MODE_PRIVATE)
+        val gson = Gson()
 
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+            val usersList = remember {
+                val json = sharedPref.getString("users", "[]") ?: "[]"
+                val type = object : TypeToken<MutableList<User>>() {}.type
+                val decoded: MutableList<User> = gson.fromJson(json, type)
+                mutableStateListOf<User>().apply { addAll(decoded) }
+            }
 
-                    var savedName by remember {
-                        mutableStateOf(sharedPref.getString("user_name", "") ?: "")
-                    }
-                    var savedPin by remember {
-                        mutableStateOf(sharedPref.getString("user_pin", "") ?: "")
-                    }
+            var lastUserId by remember { mutableStateOf(sharedPref.getString("last_id", "") ?: "") }
+            var targetUser by remember { mutableStateOf(usersList.find { it.idDeLogare == lastUserId }) }
+            var currentScreen by remember { mutableStateOf(if (lastUserId.isEmpty()) "START" else "PIN_LOGIN") }
 
-                    var currentScreen by remember {
-                        mutableStateOf(if (savedName.isEmpty()) "REGISTER" else "LOGIN")
-                    }
+            val saveAll = { sharedPref.edit().putString("users", gson.toJson(usersList.toList())).apply() }
+            val setLastUser = { user: User ->
+                sharedPref.edit().putString("last_id", user.idDeLogare).apply()
+                lastUserId = user.idDeLogare
+                targetUser = user
+            }
 
-                    when (currentScreen) {
-                        "REGISTER" -> RegisterScreen { name, pin ->
-                            sharedPref.edit().apply {
-                                putString("user_name", name)
-                                putString("user_pin", pin)
-                                apply()
-                            }
-                            savedName = name
-                            savedPin = pin
-                            currentScreen = "LOGIN"
-                        }
-
-                        "LOGIN" -> LoginScreen(
-                            savedPin = savedPin,
-                            userName = savedName,
-                            onLoginSuccess = { currentScreen = "MAIN" },
-                            onGoToRegister = { currentScreen = "REGISTER" }
-                        )
-
-                        "MAIN" -> HomeScreen(
-                            viewModel = viewModel,
-                            userName = savedName,
-                            onLogout = {
-
-                                currentScreen = "LOGIN"
-                            },
-                            onDeleteAccount = {
-                                sharedPref.edit().clear().apply()
-                                savedName = ""
-                                savedPin = ""
-                                currentScreen = "REGISTER"
-                            }
-                        )
-                    }
+            when (currentScreen) {
+                "START" -> StartScreen(onRegister = { currentScreen = "REGISTER" }, onExisting = { currentScreen = "LOGIN_EXISTING" })
+                "REGISTER" -> RegisterScreen { newUser -> usersList.add(newUser); saveAll(); setLastUser(newUser); currentScreen = "PIN_LOGIN" }
+                "LOGIN_EXISTING" -> LoginExistingScreen { id, pin ->
+                    val user = usersList.find { it.idDeLogare == id && it.pin == pin }
+                    if (user != null) { setLastUser(user); currentScreen = "PIN_LOGIN" } else Toast.makeText(this, "Greșit!", Toast.LENGTH_SHORT).show()
+                }
+                "PIN_LOGIN" -> targetUser?.let { user ->
+                    PinLoginScreen(user.name, user.pin, { currentScreen = "HOME" }, { currentScreen = "LOGIN_EXISTING" }, { currentScreen = "REGISTER" })
+                }
+                "HOME" -> targetUser?.let { activeUser ->
+                    HomeScreen(activeUser, { currentScreen = "PIN_LOGIN" }, { toIban, amount ->
+                        val receiver = usersList.find { it.iban == toIban }
+                        if (receiver != null && activeUser.balance >= amount && amount > 0) {
+                            val sIdx = usersList.indexOfFirst { it.iban == activeUser.iban }
+                            val rIdx = usersList.indexOfFirst { it.iban == toIban }
+                            usersList[sIdx] = usersList[sIdx].copy(balance = usersList[sIdx].balance - amount)
+                            usersList[rIdx] = usersList[rIdx].copy(balance = usersList[rIdx].balance + amount)
+                            targetUser = usersList[sIdx]; saveAll()
+                            Toast.makeText(this, "Transfer reușit către ${receiver.name}!", Toast.LENGTH_SHORT).show()
+                        } else Toast.makeText(this, "Eroare!", Toast.LENGTH_SHORT).show()
+                    })
                 }
             }
         }
