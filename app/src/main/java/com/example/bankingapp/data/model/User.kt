@@ -5,5 +5,6 @@ data class User(
     val iban: String,
     val name: String,
     val pin: String,
-    var balance: Double
+    var balance: Double,
+    var savingsBalance: Double = 0.0
 )
