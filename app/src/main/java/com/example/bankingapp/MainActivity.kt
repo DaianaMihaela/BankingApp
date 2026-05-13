@@ -43,17 +43,19 @@ class MainActivity : ComponentActivity() {
                 val transactionsHistory = remember { mutableStateListOf<Pair<String, String>>() }
                 val loans = remember { mutableStateListOf<Loan>() }
 
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 var lastLoggedInUser by remember { mutableStateOf<User?>(null) }
                 var targetUser by remember { mutableStateOf<User?>(null) }
 
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
                 val usersList = remember {
-                    mutableStateListOf(User("123456", "RO06DAE111222", "Ion Popescu", "1234", 5000.0))
-                    mutableStateListOf(User("098765", "RO06DAE111332", "Andreea Chirita", "0987", 8000.0))
-                    mutableStateListOf(User("456789", "RO06DAE111456", "Elena Nistor", "0000", 7000.0))
-                    mutableStateListOf(User("111111", "RO06DAE432222", "Daiana Dumitru", "1222", 8000.0))
+                    mutableStateListOf(
+                        User("123456", "RO06DAE111222", "Ion Popescu", "1234", 5000.0),
+                        User("098765", "RO06DAE111332", "Andreea Chirita", "0987", 8000.0),
+                        User("456789", "RO06DAE111456", "Elena Nistor", "0000", 7000.0),
+                        User("111111", "RO06DAE432222", "Daiana Dumitru", "1222", 8000.0)
+                    )
                 }
 
                 val navigateTo = { screen: String ->
