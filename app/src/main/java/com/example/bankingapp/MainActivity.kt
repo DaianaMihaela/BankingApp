@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,7 +36,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BankingAppTheme {
-                var currentScreen by remember { mutableStateOf("START") }
+                var currentScreen by remember { mutableStateOf("SPLASH") }
                 val backStack = remember { mutableStateListOf<String>() }
                 val forwardStack = remember { mutableStateListOf<String>() }
                 val transactionsHistory = remember { mutableStateListOf<Pair<String, String>>() }
@@ -84,7 +87,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         bottomBar = {
-                            if (currentScreen != "START") {
+                            if (currentScreen != "START" && currentScreen != "SPLASH") {
                                 Surface(Modifier.fillMaxWidth().height(80.dp).shadow(8.dp), color = MaterialTheme.colorScheme.surface) {
                                     Row(Modifier.fillMaxSize().padding(horizontal = 24.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                         ProfiNavButton("Înapoi", Icons.AutoMirrored.Filled.ArrowBack, {
@@ -106,15 +109,16 @@ class MainActivity : ComponentActivity() {
                     ) { p ->
                         Box(Modifier.padding(p)) {
                             when (currentScreen) {
-                                "START" -> {
-                                    if (lastLoggedInUser != null) {
+                                "SPLASH" -> SplashScreen {
+                                    currentScreen = if (lastLoggedInUser != null) {
                                         targetUser = lastLoggedInUser
-                                        currentScreen = "PIN_LOGIN"
+                                        "PIN_LOGIN"
                                     } else {
-                                        StartScreen({ navigateTo("REGISTER") }, { navigateTo("LOGIN_EXISTING") })
+                                        "START"
                                     }
                                 }
-                                "REGISTER" -> RegisterScreen { u: User ->
+                                "START" -> StartScreen({ navigateTo("REGISTER") }, { navigateTo("LOGIN_EXISTING") })
+                                "REGISTER" -> RegisterScreen { u ->
                                     usersList.add(u); targetUser = u; lastLoggedInUser = u
                                     navigateTo("PIN_LOGIN")
                                 }
@@ -181,9 +185,41 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun SplashScreen(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_dae),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Text("Atingeți ecranul", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
 fun ProfiNavButton(text: String, icon: ImageVector, onClick: () -> Unit, enabled: Boolean) {
     val col = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    Row(Modifier.width(130.dp).height(50.dp).clip(RoundedCornerShape(12.dp)).background(col).clickable(enabled) { onClick() }, Arrangement.Center, Alignment.CenterVertically) {
-        Icon(icon, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(text)
+    Row(
+        modifier = Modifier
+            .width(130.dp)
+            .height(50.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(col)
+            .clickable(enabled) { onClick() },
+        Arrangement.Center,
+        Alignment.CenterVertically
+    ) {
+        Icon(icon, null, Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text)
     }
 }
