@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.example.bankingapp.R
 import com.example.bankingapp.data.model.User
 import com.example.bankingapp.data.repository.BillsApi
+import com.example.bankingapp.data.repository.CurrencyRepository
 import java.util.Locale
 
 val PrimaryColor = Color(0xFF1A3B8E)
@@ -101,6 +102,11 @@ fun PinLoginScreen(userName: String, correctPin: String, onSuccess: () -> Unit, 
 @Composable
 fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer: (String, Double) -> Unit, onDeposit: (Double) -> Unit, onWithdraw: (Double) -> Unit) {
     var showT by remember { mutableStateOf(false) }; var showS by remember { mutableStateOf(false) }; var isDep by remember { mutableStateOf(true) }
+    var exchangeRate by remember { mutableStateOf(0.20) }
+
+    LaunchedEffect(Unit) {
+        exchangeRate = CurrencyRepository.getRonToEurRate()
+    }
 
     // Obținem managerul pentru Clipboard
     val clipboardManager = LocalClipboardManager.current
@@ -120,6 +126,7 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
                 Card(Modifier.fillMaxWidth().height(180.dp).padding(vertical = 10.dp), colors = CardDefaults.cardColors(containerColor = PrimaryColor)) {
                     Column(Modifier.padding(20.dp)) {
                         Text("Sold Curent", color = Color.White.copy(0.7f)); Text(String.format(Locale.getDefault(), "%.2f RON", user.balance), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        Text(String.format(Locale.getDefault(), "≈ %.2f EUR", user.balance * exchangeRate), color = Color.White.copy(0.9f), fontSize = 18.sp)
                         Spacer(Modifier.height(8.dp))
 
                         // ROW pentru IBAN + BUTON COPIERE
@@ -140,9 +147,11 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
                         }
                     }
                 }
-                Card(Modifier.fillMaxWidth().height(140.dp), colors = CardDefaults.cardColors(containerColor = SaveColor)) {
+                Card(Modifier.fillMaxWidth().padding(top = 10.dp), colors = CardDefaults.cardColors(containerColor = SaveColor)) {
                     Column(Modifier.padding(15.dp)) {
-                        Text("Pușculiță", color = Color.White, fontWeight = FontWeight.Bold); Text(String.format(Locale.getDefault(), "%.2f RON", user.savingsBalance), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text("Pușculiță", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(String.format(Locale.getDefault(), "%.2f RON", user.savingsBalance), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(String.format(Locale.getDefault(), "≈ %.2f EUR", user.savingsBalance * exchangeRate), color = Color.White.copy(0.8f), fontSize = 16.sp)
                         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { isDep = true; showS = true }, colors = ButtonDefaults.buttonColors(containerColor = Color.White)) { Text("Depune", color = SaveColor) }
                             Button(onClick = { isDep = false; showS = true }, colors = ButtonDefaults.buttonColors(containerColor = Color.White)) { Text("Retrage", color = SaveColor) }
