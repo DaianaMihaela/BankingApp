@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager // Importat pentru copiere
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString // Necesar pentru Clipboard
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bankingapp.R
 import com.example.bankingapp.data.model.User
+import com.example.bankingapp.data.model.Loan
 import com.example.bankingapp.data.repository.BillsApi
 import java.util.Locale
 
@@ -102,10 +103,8 @@ fun PinLoginScreen(userName: String, correctPin: String, onSuccess: () -> Unit, 
 fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer: (String, Double) -> Unit, onDeposit: (Double) -> Unit, onWithdraw: (Double) -> Unit) {
     var showT by remember { mutableStateOf(false) }; var showS by remember { mutableStateOf(false) }; var isDep by remember { mutableStateOf(true) }
 
-    // Obținem managerul pentru Clipboard
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -121,8 +120,6 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
                     Column(Modifier.padding(20.dp)) {
                         Text("Sold Curent", color = Color.White.copy(0.7f)); Text(String.format(Locale.getDefault(), "%.2f RON", user.balance), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
-
-                        // ROW pentru IBAN + BUTON COPIERE
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("IBAN: ${user.iban}", color = Color.White, fontSize = 14.sp)
                             Spacer(Modifier.width(8.dp))
@@ -134,7 +131,6 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
                                     .size(18.dp)
                                     .clickable {
                                         clipboardManager.setText(AnnotatedString(user.iban))
-                                        // Feedback vizual opțional ar putea fi adăugat aici (Toast/Snackbar)
                                     }
                             )
                         }
@@ -152,7 +148,6 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
             }
         }
     }
-    // Dialogurile rămân neschimbate
     if(showT) {
         var iban by remember { mutableStateOf("") }; var sum by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = {showT=false}, title = {Text("Transfer Extern")}, text = {Column{OutlinedTextField(value=iban, onValueChange={iban=it}, label={Text("IBAN")}); OutlinedTextField(value=sum, onValueChange={sum=it}, label={Text("Suma")}, keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number))}}, confirmButton = {Button(onClick={onTransfer(iban, sum.toDoubleOrNull()?:0.0); showT=false}){Text("Trimite")}})
@@ -163,7 +158,6 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
     }
 }
 
-// Restul ecranelor (Bills, History) rămân la fel ca în codul tău original...
 @Composable
 fun BillsScreen(user: User, onPay: (Double, String, Boolean) -> Unit) {
     val bills = BillsApi.fetchBills()
@@ -192,5 +186,85 @@ fun HistoryScreen(hist: List<Pair<String, String>>) {
                 HorizontalDivider()
             }
         }
+    }
+}
+
+@Composable
+fun SocialLendingScreen(
+    user: User,
+    loans: List<Loan>,
+    onCreateLoan: (String, Double, Double, String) -> Unit,
+    onRepayLoan: (Loan) -> Unit
+) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text("Social Staking", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryColor)
+            IconButton(onClick = { showCreateDialog = true }) {
+                Icon(Icons.Default.AddCircle, null, tint = PrimaryColor, modifier = Modifier.size(32.dp))
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Împrumuturi între prieteni (P2P)", fontSize = 14.sp, color = Color.Gray)
+        Spacer(Modifier.height(16.dp))
+
+        if (loans.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nu ai împrumuturi active.", color = Color.Gray)
+            }
+        } else {
+            LazyColumn {
+                items(loans) { loan ->
+                    val isLender = loan.lenderIban == user.iban
+                    Card(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, PrimaryColor.copy(alpha = 0.2f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Text(if (isLender) "Împrumut acordat lui" else "Împrumut de la", fontSize = 12.sp, color = Color.Gray)
+                                Text(if (loan.isRepaid) "ACHITAT" else "ACTIV", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (loan.isRepaid) SaveColor else PrimaryColor)
+                            }
+                            Text(if (isLender) loan.borrowerName else loan.lenderName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                                Column { Text("Sumă", fontSize = 12.sp, color = Color.Gray); Text("${String.format(Locale.getDefault(), "%.2f", loan.amount)} RON", fontWeight = FontWeight.Bold) }
+                                Column(horizontalAlignment = Alignment.End) { Text("Dobândă", fontSize = 12.sp, color = Color.Gray); Text("${loan.interestRate}%", fontWeight = FontWeight.Bold) }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text("Scadență: ${loan.dueDate}", fontSize = 14.sp)
+                            
+                            if (!loan.isRepaid && !isLender) {
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = { onRepayLoan(loan) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)) { Text("Achită acum") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCreateDialog) {
+        var friendIban by remember { mutableStateOf("") }; var amount by remember { mutableStateOf("") }; var interest by remember { mutableStateOf("0") }; var date by remember { mutableStateOf("20.12.2024") }
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false },
+            title = { Text("Contract Digital Nou") },
+            text = {
+                Column {
+                    Text("Aplicația acționează ca garant și va retrage automat suma la scadență.", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = friendIban, onValueChange = { friendIban = it }, label = { Text("IBAN Prieten") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Sumă (RON)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = interest, onValueChange = { interest = it }, label = { Text("Dobândă (%)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Data Scadenței") }, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = { Button(onClick = { onCreateLoan(friendIban, amount.toDoubleOrNull() ?: 0.0, interest.toDoubleOrNull() ?: 0.0, date); showCreateDialog = false }) { Text("Semnează și Trimite") } },
+            dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("Anulează") } }
+        )
     }
 }

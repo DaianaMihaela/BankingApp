@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bankingapp.data.model.User
+import com.example.bankingapp.data.model.Loan
 import com.example.bankingapp.data.repository.BillsApi
 import com.example.bankingapp.ui.*
 import com.example.bankingapp.ui.theme.BankingAppTheme
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
                 val backStack = remember { mutableStateListOf<String>() }
                 val forwardStack = remember { mutableStateListOf<String>() }
                 val transactionsHistory = remember { mutableStateListOf<Pair<String, String>>() }
+                val loans = remember { mutableStateListOf<Loan>() }
 
                 var lastLoggedInUser by remember { mutableStateOf<User?>(null) }
                 var targetUser by remember { mutableStateOf<User?>(null) }
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
                             NavigationDrawerItem(label = { Text("Acasă") }, selected = currentScreen == "HOME", onClick = { scope.launch { drawerState.close() }; navigateTo("HOME") }, icon = { Icon(Icons.Default.Home, null) })
                             NavigationDrawerItem(label = { Text("Facturi") }, selected = currentScreen == "BILLS", onClick = { scope.launch { drawerState.close() }; navigateTo("BILLS") }, icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) })
                             NavigationDrawerItem(label = { Text("Istoric") }, selected = currentScreen == "HISTORY", onClick = { scope.launch { drawerState.close() }; navigateTo("HISTORY") }, icon = { Icon(Icons.Default.History, null) })
+                            NavigationDrawerItem(label = { Text("Social Lending") }, selected = currentScreen == "LENDING", onClick = { scope.launch { drawerState.close() }; navigateTo("LENDING") }, icon = { Icon(Icons.Default.People, null) })
                         }
                     }
                 ) {
@@ -175,6 +178,69 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 "HISTORY" -> HistoryScreen(transactionsHistory)
+                                "LENDING" -> targetUser?.let { activeUser ->
+                                    // Simulare retragere automată la scadență
+                                    LaunchedEffect(Unit) {
+                                        loans.filter { !it.isRepaid && it.borrowerIban == activeUser.iban }.forEach { loan ->
+                                            // Aici s-ar verifica data curentă față de loan.dueDate
+                                            // Pentru demo, considerăm că dacă e activ, verificăm dacă putem trage banii
+                                        }
+                                    }
+
+                                    SocialLendingScreen(
+                                        activeUser,
+                                        loans.filter { it.lenderIban == activeUser.iban || it.borrowerIban == activeUser.iban },
+                                        { friendIban: String, amount: Double, interest: Double, dueDate: String ->
+                                            val lenderIdx = usersList.indexOfFirst { it.idDeLogare == activeUser.idDeLogare }
+                                            val borrowerIdx = usersList.indexOfFirst { it.iban == friendIban }
+                                            
+                                            if (lenderIdx != -1 && borrowerIdx != -1 && activeUser.balance >= amount) {
+                                                usersList[lenderIdx] = usersList[lenderIdx].copy(balance = activeUser.balance - amount)
+                                                usersList[borrowerIdx] = usersList[borrowerIdx].copy(balance = usersList[borrowerIdx].balance + amount)
+                                                targetUser = usersList[lenderIdx]
+                                                
+                                                loans.add(Loan(
+                                                    id = (1000..9999).random().toString(),
+                                                    lenderName = activeUser.name,
+                                                    lenderIban = activeUser.iban,
+                                                    borrowerName = usersList[borrowerIdx].name,
+                                                    borrowerIban = friendIban,
+                                                    amount = amount,
+                                                    interestRate = interest,
+                                                    dueDate = dueDate,
+                                                    contractDate = "15.11.2024"
+                                                ))
+                                                
+                                                transactionsHistory.add(0, "Acordat împrumut către ${usersList[borrowerIdx].name}" to "-${String.format(Locale.getDefault(), "%.2f", amount)} RON")
+                                            } else {
+                                                Toast.makeText(this@MainActivity, "Eroare: IBAN incorect sau fonduri insuficiente!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        { loan: Loan ->
+                                            val borrowerIdx = usersList.indexOfFirst { it.iban == loan.borrowerIban }
+                                            val lenderIdx = usersList.indexOfFirst { it.iban == loan.lenderIban }
+                                            
+                                            if (borrowerIdx != -1 && lenderIdx != -1) {
+                                                val totalRepay = loan.amount * (1 + loan.interestRate / 100)
+                                                if (usersList[borrowerIdx].balance >= totalRepay) {
+                                                    usersList[borrowerIdx] = usersList[borrowerIdx].copy(balance = usersList[borrowerIdx].balance - totalRepay)
+                                                    usersList[lenderIdx] = usersList[lenderIdx].copy(balance = usersList[lenderIdx].balance + totalRepay)
+                                                    
+                                                    if (targetUser?.iban == loan.borrowerIban) targetUser = usersList[borrowerIdx]
+                                                    if (targetUser?.iban == loan.lenderIban) targetUser = usersList[lenderIdx]
+                                                    
+                                                    val loanIdx = loans.indexOfFirst { it.id == loan.id }
+                                                    if (loanIdx != -1) loans[loanIdx] = loans[loanIdx].copy(isRepaid = true)
+                                                    
+                                                    transactionsHistory.add(0, "Rambursare împrumut către ${loan.lenderName}" to "-${String.format(Locale.getDefault(), "%.2f", totalRepay)} RON")
+                                                    transactionsHistory.add(0, "Încasare împrumut de la ${loan.borrowerName}" to "+${String.format(Locale.getDefault(), "%.2f", totalRepay)} RON")
+                                                } else {
+                                                    Toast.makeText(this@MainActivity, "Fonduri insuficiente pentru rambursare!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
