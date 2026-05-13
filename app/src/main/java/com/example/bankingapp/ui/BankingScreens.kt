@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager // Importat pentru copiere
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString // Necesar pentru Clipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -99,7 +101,16 @@ fun PinLoginScreen(userName: String, correctPin: String, onSuccess: () -> Unit, 
 @Composable
 fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer: (String, Double) -> Unit, onDeposit: (Double) -> Unit, onWithdraw: (Double) -> Unit) {
     var showT by remember { mutableStateOf(false) }; var showS by remember { mutableStateOf(false) }; var isDep by remember { mutableStateOf(true) }
-    Scaffold(floatingActionButton = { FloatingActionButton(onClick = { showT = true }, containerColor = PrimaryColor) { Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.White) } }) { p ->
+
+    // Obținem managerul pentru Clipboard
+    val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = { FloatingActionButton(onClick = { showT = true }, containerColor = PrimaryColor) { Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.White) } }
+    ) { p ->
         LazyColumn(Modifier.padding(p).padding(20.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -109,7 +120,24 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
                 Card(Modifier.fillMaxWidth().height(180.dp).padding(vertical = 10.dp), colors = CardDefaults.cardColors(containerColor = PrimaryColor)) {
                     Column(Modifier.padding(20.dp)) {
                         Text("Sold Curent", color = Color.White.copy(0.7f)); Text(String.format(Locale.getDefault(), "%.2f RON", user.balance), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp)); Text("IBAN: ${user.iban}", color = Color.White, fontSize = 14.sp)
+                        Spacer(Modifier.height(8.dp))
+
+                        // ROW pentru IBAN + BUTON COPIERE
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("IBAN: ${user.iban}", color = Color.White, fontSize = 14.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copiază IBAN",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable {
+                                        clipboardManager.setText(AnnotatedString(user.iban))
+                                        // Feedback vizual opțional ar putea fi adăugat aici (Toast/Snackbar)
+                                    }
+                            )
+                        }
                     }
                 }
                 Card(Modifier.fillMaxWidth().height(140.dp), colors = CardDefaults.cardColors(containerColor = SaveColor)) {
@@ -124,6 +152,7 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
             }
         }
     }
+    // Dialogurile rămân neschimbate
     if(showT) {
         var iban by remember { mutableStateOf("") }; var sum by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = {showT=false}, title = {Text("Transfer Extern")}, text = {Column{OutlinedTextField(value=iban, onValueChange={iban=it}, label={Text("IBAN")}); OutlinedTextField(value=sum, onValueChange={sum=it}, label={Text("Suma")}, keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number))}}, confirmButton = {Button(onClick={onTransfer(iban, sum.toDoubleOrNull()?:0.0); showT=false}){Text("Trimite")}})
@@ -134,6 +163,7 @@ fun HomeScreen(user: User, onMenu: () -> Unit, onLogout: () -> Unit, onTransfer:
     }
 }
 
+// Restul ecranelor (Bills, History) rămân la fel ca în codul tău original...
 @Composable
 fun BillsScreen(user: User, onPay: (Double, String, Boolean) -> Unit) {
     val bills = BillsApi.fetchBills()
