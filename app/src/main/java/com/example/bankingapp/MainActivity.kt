@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,15 +19,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bankingapp.data.model.User
 import com.example.bankingapp.data.model.Loan
+import com.example.bankingapp.data.model.Template
 import com.example.bankingapp.data.repository.BillsApi
 import com.example.bankingapp.ui.*
-import com.example.bankingapp.ui.theme.BankingAppTheme
+import com.example.bankingapp.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -36,12 +35,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            BankingAppTheme {
+            var isLightMode by remember { mutableStateOf(false) }
+            BankingAppTheme(darkTheme = !isLightMode) {
                 var currentScreen by remember { mutableStateOf("SPLASH") }
                 val backStack = remember { mutableStateListOf<String>() }
                 val forwardStack = remember { mutableStateListOf<String>() }
                 val transactionsHistory = remember { mutableStateListOf<Pair<String, String>>() }
                 val loans = remember { mutableStateListOf<Loan>() }
+                val templates = remember { 
+                    mutableStateListOf(
+                        Template("1", "Mama", "RO12BANK00001111"),
+                        Template("2", "Chirie", "RO99CASH88887777")
+                    )
+                }
 
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 var lastLoggedInUser by remember { mutableStateOf<User?>(null) }
@@ -84,12 +90,19 @@ class MainActivity : ComponentActivity() {
                     drawerState = drawerState,
                     gesturesEnabled = currentScreen in listOf("HOME", "BILLS", "HISTORY"),
                     drawerContent = {
-                        ModalDrawerSheet {
-                            Text("Meniu", Modifier.padding(16.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            NavigationDrawerItem(label = { Text("Acasă") }, selected = currentScreen == "HOME", onClick = { scope.launch { drawerState.close() }; navigateTo("HOME") }, icon = { Icon(Icons.Default.Home, null) })
-                            NavigationDrawerItem(label = { Text("Facturi") }, selected = currentScreen == "BILLS", onClick = { scope.launch { drawerState.close() }; navigateTo("BILLS") }, icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) })
-                            NavigationDrawerItem(label = { Text("Istoric") }, selected = currentScreen == "HISTORY", onClick = { scope.launch { drawerState.close() }; navigateTo("HISTORY") }, icon = { Icon(Icons.Default.History, null) })
-                            NavigationDrawerItem(label = { Text("Social Lending") }, selected = currentScreen == "LENDING", onClick = { scope.launch { drawerState.close() }; navigateTo("LENDING") }, icon = { Icon(Icons.Default.People, null) })
+                        ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+                            Text("Meniu", Modifier.padding(24.dp), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryColor)
+                            NavigationDrawerItem(label = { Text("Acasă", color = MaterialTheme.colorScheme.onSurface) }, selected = currentScreen == "HOME", onClick = { scope.launch { drawerState.close() }; navigateTo("HOME") }, icon = { Icon(Icons.Default.Home, null, tint = PrimaryColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
+                            NavigationDrawerItem(label = { Text("Facturi", color = MaterialTheme.colorScheme.onSurface) }, selected = currentScreen == "BILLS", onClick = { scope.launch { drawerState.close() }; navigateTo("BILLS") }, icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = PrimaryColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
+                            NavigationDrawerItem(label = { Text("Istoric", color = MaterialTheme.colorScheme.onSurface) }, selected = currentScreen == "HISTORY", onClick = { scope.launch { drawerState.close() }; navigateTo("HISTORY") }, icon = { Icon(Icons.Default.History, null, tint = PrimaryColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
+                            NavigationDrawerItem(label = { Text("Șabloane", color = MaterialTheme.colorScheme.onSurface) }, selected = currentScreen == "TEMPLATES", onClick = { scope.launch { drawerState.close() }; navigateTo("TEMPLATES") }, icon = { Icon(Icons.Default.Star, null, tint = PrimaryColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
+                            NavigationDrawerItem(label = { Text("Social Lending", color = MaterialTheme.colorScheme.onSurface) }, selected = currentScreen == "LENDING", onClick = { scope.launch { drawerState.close() }; navigateTo("LENDING") }, icon = { Icon(Icons.Default.People, null, tint = PrimaryColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
+                            
+                            HorizontalDivider(Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("Mod Luminos", Modifier.weight(1f), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                Switch(checked = isLightMode, onCheckedChange = { isLightMode = it }, colors = SwitchDefaults.colors(checkedThumbColor = PrimaryColor))
+                            }
                         }
                     }
                 ) {
@@ -141,7 +154,7 @@ class MainActivity : ComponentActivity() {
                                         { lastLoggedInUser = null; navigateTo("REGISTER") })
                                 }
                                 "HOME" -> targetUser?.let { activeUser ->
-                                    HomeScreen(activeUser, { scope.launch { drawerState.open() } }, { navigateTo("START") },
+                                    HomeScreen(activeUser, isLightMode, transactionsHistory, templates, { scope.launch { drawerState.open() } }, { navigateTo("START") },
                                         { iban, amount ->
                                             val expIdx = usersList.indexOfFirst { it.idDeLogare == activeUser.idDeLogare }
                                             if (expIdx != -1 && activeUser.balance >= amount) {
@@ -183,15 +196,12 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 "HISTORY" -> HistoryScreen(transactionsHistory)
+                                "TEMPLATES" -> TemplatesScreen(
+                                    templates,
+                                    onAdd = { name, iban -> templates.add(Template(System.currentTimeMillis().toString(), name, iban)) },
+                                    onDelete = { t -> templates.remove(t) }
+                                )
                                 "LENDING" -> targetUser?.let { activeUser ->
-                                    // Simulare retragere automată la scadență
-                                    LaunchedEffect(Unit) {
-                                        loans.filter { !it.isRepaid && it.borrowerIban == activeUser.iban }.forEach { loan ->
-                                            // Aici s-ar verifica data curentă față de loan.dueDate
-                                            // Pentru demo, considerăm că dacă e activ, verificăm dacă putem trage banii
-                                        }
-                                    }
-
                                     SocialLendingScreen(
                                         activeUser,
                                         loans.filter { it.lenderIban == activeUser.iban || it.borrowerIban == activeUser.iban },
@@ -260,17 +270,15 @@ fun SplashScreen(onDismiss: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .clickable { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_dae),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth(0.8f)
-            )
-            Spacer(modifier = Modifier.height(20.dp))
+            Text("Banking App", color = PrimaryColor, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(24.dp))
+            CircularProgressIndicator(color = PrimaryColor, strokeWidth = 4.dp)
+            Spacer(modifier = Modifier.height(30.dp))
             Text("Atingeți ecranul", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
     }
@@ -278,19 +286,20 @@ fun SplashScreen(onDismiss: () -> Unit) {
 
 @Composable
 fun ProfiNavButton(text: String, icon: ImageVector, onClick: () -> Unit, enabled: Boolean) {
-    val col = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val col = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+    val tint = if (enabled) PrimaryColor else Color.Gray
     Row(
         modifier = Modifier
             .width(130.dp)
             .height(50.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(col)
             .clickable(enabled) { onClick() },
         Arrangement.Center,
         Alignment.CenterVertically
     ) {
-        Icon(icon, null, Modifier.size(20.dp))
+        Icon(icon, null, Modifier.size(20.dp), tint = tint)
         Spacer(Modifier.width(8.dp))
-        Text(text)
+        Text(text, color = if (enabled) MaterialTheme.colorScheme.onSurface else Color.Gray)
     }
 }
