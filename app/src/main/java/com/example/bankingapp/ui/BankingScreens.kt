@@ -296,6 +296,260 @@ fun FlipCard(user: User, exchangeRate: Double) {
 }
 
 @Composable
+fun ProductCard(
+    title: String,
+    balance: Double,
+    actionText: String,
+    icon: ImageVector,
+    topBarColor: Color,
+    onActionClick: () -> Unit,
+    onCardClick: () -> Unit,
+    secondaryActionText: String? = null,
+    onSecondaryActionClick: (() -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { onCardClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(Modifier.fillMaxWidth().height(4.dp).background(topBarColor))
+            Column(Modifier.padding(16.dp)) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
+                    Column {
+                        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
+                        Text(
+                            String.format(Locale.getDefault(), "%.2f RON", balance),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (balance >= 0) Color(0xFF2E7D32) else Color.Red
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .background(topBarColor.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, null, tint = topBarColor, modifier = Modifier.size(24.dp))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
+                Row {
+                    TextButton(
+                        onClick = onActionClick,
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(actionText, color = PrimaryColor, fontWeight = FontWeight.SemiBold)
+                    }
+                    if (secondaryActionText != null && onSecondaryActionClick != null) {
+                        Spacer(Modifier.width(24.dp))
+                        TextButton(
+                            onClick = onSecondaryActionClick,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(secondaryActionText, color = PrimaryColor, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AccountDetailsScreen(
+    user: User,
+    transactions: List<Pair<String, String>>,
+    onBack: () -> Unit,
+    onTransferClick: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("Tranzactii", "Optiuni", "Carduri", "Detalii")
+    var exchangeRate by remember { mutableStateOf(0.20) }
+
+    LaunchedEffect(Unit) {
+        exchangeRate = CurrencyRepository.getRonToEurRate()
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF7B1FA2))
+                .statusBarsPadding()
+                .padding(vertical = 8.dp)
+        ) {
+            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+            }
+        }
+
+        Card(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(Modifier.padding(20.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column {
+                    Text("Cont Curent", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Text(String.format(Locale.getDefault(), "%.2f RON", user.balance), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                }
+                Box(Modifier.size(48.dp).background(Color(0xFFF3E5F5), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Payments, null, tint = Color(0xFF7B1FA2))
+                }
+            }
+        }
+
+        ScrollableTabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = PrimaryColor,
+            edgePadding = 16.dp,
+            divider = {}
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = { Text(title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
+                )
+            }
+        }
+
+        Box(Modifier.weight(1f)) {
+            when (selectedTab) {
+                0 -> TransactionsTab(transactions)
+                1 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Optiuni - În curând", color = Color.Gray) }
+                2 -> CardsTab(user, exchangeRate)
+                3 -> DetailsTab(user)
+            }
+        }
+        
+        if (selectedTab == 0) {
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.BottomEnd) {
+                 Button(
+                     onClick = onTransferClick,
+                     shape = RoundedCornerShape(24.dp),
+                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                 ) {
+                     Icon(Icons.Default.Add, null, tint = Color.White)
+                     Spacer(Modifier.width(8.dp))
+                     Text("Transfer nou", color = Color.White)
+                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionsTab(transactions: List<Pair<String, String>>) {
+    if (transactions.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Nicio tranzacție de afișat.", color = Color.Gray)
+        }
+    } else {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            item { Spacer(Modifier.height(16.dp)); Text("Mai 2024", fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 14.sp); Spacer(Modifier.height(8.dp)) }
+            items(transactions) { (title, amount) ->
+                TransactionListItem(title, amount)
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionListItem(title: String, amount: String) {
+    val isPositive = amount.contains("+")
+    val isFailed = amount.contains("EȘUAT")
+    
+    ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = { Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp) },
+        supportingContent = { Text("Astăzi • Transfer", fontSize = 13.sp, color = Color.Gray) },
+        trailingContent = { 
+            Text(
+                amount, 
+                fontWeight = FontWeight.Bold, 
+                color = if (isPositive) SaveColor else if (isFailed) Color.Red else MaterialTheme.colorScheme.onSurface 
+            ) 
+        },
+        leadingContent = {
+            Box(Modifier.size(42.dp).background(if (isPositive) SaveColor.copy(0.1f) else Color.LightGray.copy(0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(
+                    if (isPositive) Icons.Default.Add else Icons.AutoMirrored.Filled.CompareArrows,
+                    null,
+                    tint = if (isPositive) SaveColor else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    )
+    HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = Color.LightGray.copy(0.3f))
+}
+
+@Composable
+fun CardsTab(user: User, exchangeRate: Double) {
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        FlipCard(user, exchangeRate)
+    }
+}
+
+@Composable
+fun DetailsTab(user: User) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        DetailItem("Tip de cont", "Cont Curent")
+        DetailItem("Titular cont", user.name)
+        DetailItem("IBAN", user.iban, showCopy = true)
+        DetailItem("BIC/SWIFT", "RNCBROBU", showCopy = true)
+        
+        Spacer(Modifier.height(24.dp))
+        Text("Disponibil", fontWeight = FontWeight.Bold, color = Color.Gray)
+        Spacer(Modifier.height(8.dp))
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, Color.LightGray.copy(0.3f))
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Sold disponibil", fontSize = 14.sp, color = Color.Gray)
+                Text(String.format(Locale.getDefault(), "%.2f RON", user.balance), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailItem(label: String, value: String, showCopy: Boolean = false) {
+    val clipboardManager = LocalClipboardManager.current
+    
+    Column(Modifier.padding(vertical = 12.dp)) {
+        Text(label, fontSize = 13.sp, color = Color.Gray)
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text(value, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            if (showCopy) {
+                IconButton(
+                    onClick = { clipboardManager.setText(AnnotatedString(value)) },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(Icons.Default.ContentCopy, null, tint = PrimaryColor, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun HomeScreen(
     user: User,
     isLightMode: Boolean,
@@ -305,103 +559,76 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onTransfer: (String, Double) -> Unit,
     onDeposit: (Double) -> Unit,
-    onWithdraw: (Double) -> Unit
+    onWithdraw: (Double) -> Unit,
+    onAccountDetails: () -> Unit,
+    onBillsClick: () -> Unit
 ) {
     var showT by remember { mutableStateOf(false) }; var showS by remember { mutableStateOf(false) }; var isDep by remember { mutableStateOf(true) }
-    var exchangeRate by remember { mutableStateOf(0.20) }
-
-    LaunchedEffect(Unit) {
-        exchangeRate = CurrencyRepository.getRonToEurRate()
-    }
-
-    val clipboardManager = LocalClipboardManager.current
-    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = { 
-            FloatingActionButton(onClick = { showT = true }, containerColor = PrimaryColor) { 
-                Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.Black) 
-            } 
+        topBar = {
+             CenterAlignedTopAppBar(
+                 title = { Text("Acasă", fontWeight = FontWeight.Bold) },
+                 navigationIcon = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, null, tint = PrimaryColor) } },
+                 actions = { 
+                     IconButton(onClick = {}) { Icon(Icons.Default.Search, null, tint = PrimaryColor) }
+                     IconButton(onClick = onAccountDetails) { Icon(Icons.Default.CreditCard, null, tint = PrimaryColor) }
+                     IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = PrimaryColor) }
+                 },
+                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+             )
         }
     ) { p ->
         LazyColumn(Modifier.padding(p).padding(horizontal = 20.dp)) {
             item {
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, null, tint = PrimaryColor) }
-                    Text("Salut, ${user.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, fontSize = 20.sp)
-                    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = PrimaryColor) }
-                }
-                Spacer(Modifier.height(30.dp))
+                Spacer(Modifier.height(16.dp))
+                Text("Produsele tale", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(Modifier.height(16.dp))
                 
-                FlipCard(user, exchangeRate)
+                ProductCard(
+                    title = "Cont Curent",
+                    balance = user.balance,
+                    actionText = "Transfer nou",
+                    icon = Icons.Default.Payments,
+                    topBarColor = Color(0xFF7B1FA2),
+                    onActionClick = { showT = true },
+                    onCardClick = onAccountDetails
+                )
+                
+                ProductCard(
+                    title = "Pușculiță",
+                    balance = user.savingsBalance,
+                    actionText = "Depunere",
+                    icon = Icons.Default.Savings,
+                    topBarColor = Color(0xFF2E7D32),
+                    onActionClick = { showS = true; isDep = true },
+                    secondaryActionText = "Retragere",
+                    onSecondaryActionClick = { showS = true; isDep = false },
+                    onCardClick = {}
+                )
                 
                 Spacer(Modifier.height(24.dp))
                 
-                // Savings Card
                 Card(
-                    Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
+                    Modifier.fillMaxWidth().clickable { onBillsClick() },
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Pușculiță", color = MaterialTheme.colorScheme.onSurface.copy(0.8f), fontWeight = FontWeight.Medium)
-                            Text(
-                                String.format(Locale.getDefault(), "%.2f RON", user.savingsBalance),
-                                color = SaveColor,
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(
-                                Modifier.size(44.dp).background(PrimaryColor, CircleShape).clickable { isDep = true; showS = true },
-                                contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Default.Add, null, tint = Color.Black) }
-                            
-                            Box(
-                                Modifier.size(44.dp).background(AccentPink, CircleShape).clickable { isDep = false; showS = true },
-                                contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Default.Remove, null, tint = Color.White) }
-                        }
+                    Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                         Column(Modifier.weight(1f)) {
+                             Text("Facturi", fontWeight = FontWeight.Bold)
+                             Text("Ai control asupra facturilor tale", fontSize = 12.sp, color = Color.Gray)
+                             Spacer(Modifier.height(4.dp))
+                             Text("Incepe", color = PrimaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                         }
+                         Box(Modifier.size(40.dp).background(PrimaryColor.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = PrimaryColor)
+                         }
                     }
                 }
-                
-                Spacer(Modifier.height(24.dp))
-                Text("Tranzacții recente", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(Modifier.height(12.dp))
-            }
-            
-            // Render top 5 transactions
-            items(transactions.take(5)) { (t, v) ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.05f))
-                ) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text(t, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface) },
-                        trailingContent = { Text(v, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if(v.contains("+")) SaveColor else if(v.contains("EȘUAT")) Color.Red else MaterialTheme.colorScheme.onSurface) },
-                        leadingContent = { 
-                            Box(Modifier.size(40.dp).background(PrimaryColor.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(if(v.contains("EȘUAT")) Icons.Default.Error else if(v.contains("+")) Icons.Default.Add else Icons.Default.History, null, tint = PrimaryColor, modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    )
-                }
-            }
-            
-            if (transactions.isEmpty()) {
-                item {
-                    Text("Nu există tranzacții recente.", color = Color.Gray, modifier = Modifier.padding(vertical = 16.dp))
-                }
+                Spacer(Modifier.height(20.dp))
             }
         }
     }
@@ -469,30 +696,36 @@ fun HomeScreen(
 
 @Composable
 fun BillsScreen(user: User, onPay: (Double, String, Boolean) -> Unit) {
-    val bills = BillsApi.fetchBills()
+    val bills = BillsApi.fetchBills().filter { !it.isPaid }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp)) {
         Text("Facturi", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryColor); Spacer(Modifier.height(16.dp))
-        LazyColumn {
-            items(bills) { bill ->
-                Card(
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp), 
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, if (bill.isPaid) SaveColor.copy(0.3f) else AccentPink.copy(0.3f))
-                ) {
-                    Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Column { 
-                            Text(bill.provider, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Text(String.format(Locale.getDefault(), "%.2f RON", bill.amount), color = if (bill.isPaid) SaveColor else AccentPink, fontWeight = FontWeight.Bold) 
+        if (bills.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nu ai facturi de plătit.", color = Color.Gray)
+            }
+        } else {
+            LazyColumn {
+                items(bills) { bill ->
+                    Card(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp), 
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, if (bill.isPaid) SaveColor.copy(0.3f) else AccentPink.copy(0.3f))
+                    ) {
+                        Row(Modifier.padding(16.dp).fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                            Column { 
+                                Text(bill.provider, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(String.format(Locale.getDefault(), "%.2f RON", bill.amount), color = if (bill.isPaid) SaveColor else AccentPink, fontWeight = FontWeight.Bold) 
+                            }
+                            if (!bill.isPaid) { 
+                                Button(
+                                    onClick = { 
+                                        if (user.balance >= bill.amount) { BillsApi.payBill(bill.id); onPay(bill.amount, bill.provider, true) } 
+                                        else onPay(bill.amount, bill.provider, false) 
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                                ) { Text("Plătește", color = Color.Black) } 
+                            } else Icon(Icons.Default.CheckCircle, null, tint = SaveColor)
                         }
-                        if (!bill.isPaid) { 
-                            Button(
-                                onClick = { 
-                                    if (user.balance >= bill.amount) { BillsApi.payBill(bill.id); onPay(bill.amount, bill.provider, true) } 
-                                    else onPay(bill.amount, bill.provider, false) 
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-                            ) { Text("Plătește", color = Color.Black) } 
-                        } else Icon(Icons.Default.CheckCircle, null, tint = SaveColor)
                     }
                 }
             }

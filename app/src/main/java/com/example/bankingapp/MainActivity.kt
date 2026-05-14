@@ -178,7 +178,23 @@ class MainActivity : ComponentActivity() {
                                                 targetUser = usersList[idx]
                                                 transactionsHistory.add(0, "Din Pușculiță" to "+${String.format(Locale.getDefault(), "%.2f", amount)} RON")
                                             }
-                                        }
+                                        },
+                                        onAccountDetails = { navigateTo("ACCOUNT_DETAILS") },
+                                        onBillsClick = { navigateTo("BILLS") }
+                                    )
+                                }
+                                "ACCOUNT_DETAILS" -> targetUser?.let { activeUser ->
+                                    AccountDetailsScreen(
+                                        user = activeUser,
+                                        transactions = transactionsHistory,
+                                        onBack = {
+                                            if (backStack.isNotEmpty()) {
+                                                currentScreen = backStack.removeAt(backStack.size - 1)
+                                            } else {
+                                                currentScreen = "HOME"
+                                            }
+                                        },
+                                        onTransferClick = { navigateTo("HOME") }
                                     )
                                 }
                                 "BILLS" -> targetUser?.let { activeUser ->
